@@ -11,19 +11,23 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 public class SecurityConfig {
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    // Configures the security filter chain for handling HTTP requests
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // Allow all incoming HTTP requests without authentication
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+
+                // Disable CSRF protection since it's not needed for stateless APIs
                 .csrf(AbstractHttpConfigurer::disable)
-                .httpBasic(Customizer.withDefaults()); // Or configure your preferred auth mechanism
+                .httpBasic(Customizer.withDefaults());
 
         return http.build();
     }
-
 }

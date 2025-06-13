@@ -19,22 +19,32 @@ public class ApiRequestLoggingFilter extends OncePerRequestFilter {
     @Autowired
     private AuditLogRepository auditLogRepository;
 
+    /**
+     * This filter intercepts every HTTP request once per request,
+     * records metadata such as endpoint, method, response code, IP address, and duration,
+     * and saves it to the audit log repository.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        long start = System.currentTimeMillis();
-        filterChain.doFilter(request, response);
-        long duration = System.currentTimeMillis() - start;
+        long start = System.currentTimeMillis(); // Capture start time before processing the request
 
+        // Continue processing the request
+        filterChain.doFilter(request, response);
+
+        long duration = System.currentTimeMillis() - start; // Calculate request handling duration
+
+        // Create a new audit log entry
         AuditLog log = new AuditLog();
-        log.setEndpoint(request.getRequestURI());
-        log.setMethod(request.getMethod());
-        log.setResponseCode(response.getStatus());
-        log.setStatus(response.getStatus() >= 400 ? "FAILED" : "SUCCESS");
-        log.setTimestamp(LocalDateTime.now());
-        log.setIpAddress(request.getRemoteAddr());
-        log.setDuration(duration);
+        log.setEndpoint(request.getRequestURI());           // API endpoint being accessed
+        log.setMethod(request.getMethod());                 // HTTP method (GET, POST, etc.)
+        log.setResponseCode(response.getStatus());          // HTTP response status code
+        log.setStatus(response.getStatus() >= 400 ? "FAILED" : "SUCCESS"); // Mark as SUCCESS or FAILED based on status
+        log.setTimestamp(LocalDateTime.now());              // Current timestamp
+        log.setIpAddress(request.getRemoteAddr());          // IP address of the client
+        log.setDuration(duration);                          // Total time taken to process the request
+
         auditLogRepository.save(log);
     }
 }
