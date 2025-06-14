@@ -20,6 +20,8 @@ public class SessionHistory extends Auditable {
     private LocalDateTime expiredAt;
 
     public SessionHistory(Session session) {
-        super();
+        this.userId = session.getUserId();
+        this.token = session.getToken();
+        this.expiredAt = session.getExpiresAt();
     }
 }
