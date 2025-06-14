@@ -111,8 +111,8 @@ public class AuthServiceImpl implements AuthService {
                 Session preSession = Session.builder()
                         .userId(user.getId())
                         .token(preAuthToken)
-                        .expiresAt(LocalDateTime.now().plusMinutes(5)) // shorter expiry
-                        .isVerified(false) // new field you’ll add
+                        .expiresAt(LocalDateTime.now().plusMinutes(5))
+                        .isVerified(false)
                         .build();
                 sessionRepo.save(preSession);
 
@@ -131,6 +131,7 @@ public class AuthServiceImpl implements AuthService {
                     .userId(user.getId())
                     .token(token)
                     .expiresAt(LocalDateTime.now().plusMinutes(15))
+                    .isVerified(false)
                     .build();
             sessionRepo.save(session);
 
@@ -149,10 +150,13 @@ public class AuthServiceImpl implements AuthService {
             Session session = sessionRepo.findByToken(token)
                     .orElseThrow(() -> new RuntimeException("Invalid session"));
 
+            if (Boolean.FALSE.equals(session.getIsVerified())) {
+                return ResponseEntity.status(403).body("Please complete 2FA authentication to access profile.");
+            }
+
             User user = userRepo.findById(session.getUserId())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            // Build and return user profile
             ProfileGetResponse response = ProfileGetResponse.builder()
                     .id(user.getId())
                     .email(user.getEmail())
@@ -177,10 +181,13 @@ public class AuthServiceImpl implements AuthService {
             Session session = sessionRepo.findByToken(token)
                     .orElseThrow(() -> new RuntimeException("Invalid session"));
 
+            if (Boolean.FALSE.equals(session.getIsVerified())) {
+                return ResponseEntity.status(403).body("Please complete 2FA authentication to update profile.");
+            }
+
             User user = userRepo.findById(session.getUserId())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            // Update fields if present
             if (checkFieldPresent(req.getName())) {
                 user.setName(req.getName());
             }
@@ -188,7 +195,7 @@ public class AuthServiceImpl implements AuthService {
                 user.setDesignation(req.getDesignation());
             }
 
-            userRepo.save(user); // Save updated user
+            userRepo.save(user);
             return ResponseEntity.ok("Profile updated successfully");
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Profile update failed: " + e.getMessage());

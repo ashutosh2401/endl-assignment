@@ -20,6 +20,5 @@ public class Session extends Auditable {
     private String token;
     @Column(nullable = false)
     private Boolean isVerified;
-    private LocalDateTime createdAt;
     private LocalDateTime expiresAt;
 }
