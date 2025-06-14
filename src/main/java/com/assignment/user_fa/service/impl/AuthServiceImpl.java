@@ -224,9 +224,20 @@ public class AuthServiceImpl implements AuthService {
             }
 
             boolean valid = GoogleAuthenticatorUtil.verifyCode(user.getTwoFactorSecret(), code);
-            if (!valid) return ResponseEntity.badRequest().body("Invalid 2FA code");
+            if (!valid) {
+                return ResponseEntity.badRequest().body("Invalid 2FA code");
+            }
 
-            return ResponseEntity.ok("2FA verification successful");
+            // Create a new session token
+            String newToken = UUID.randomUUID().toString();
+            Session newSession = Session.builder()
+                    .userId(user.getId())
+                    .token(newToken)
+                    .expiresAt(LocalDateTime.now().plusMinutes(15))
+                    .build();
+            sessionRepo.save(newSession);
+
+            return ResponseEntity.ok(newToken); // Send session token
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("2FA verification failed: " + e.getMessage());
         }

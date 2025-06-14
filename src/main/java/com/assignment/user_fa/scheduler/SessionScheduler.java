@@ -27,11 +27,13 @@ public class SessionScheduler {
      */
     @Scheduled(fixedRate = 300000) // Run every 5 minutes
     public void purgeInactiveSessions() {
+        System.out.println("Purge Inactive sessions scheduler running.");
         // Fetch all sessions that have expired
         List<Session> expired = sessionRepository.findByExpiresAtBefore(LocalDateTime.now());
 
         // Archive each expired session and then delete it from the active session store
         for (Session session : expired) {
+            System.out.println("expired session : " + session);
             historyRepository.save(new SessionHistory(session));
             sessionRepository.delete(session);
         }
