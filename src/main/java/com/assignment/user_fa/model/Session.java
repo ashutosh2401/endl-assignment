@@ -13,10 +13,13 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 public class Session extends Auditable {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private Long userId;
     private String token;
+    @Column(nullable = false)
+    private Boolean isVerified;
     private LocalDateTime createdAt;
     private LocalDateTime expiresAt;
 }

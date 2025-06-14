@@ -13,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -104,7 +105,24 @@ public class AuthServiceImpl implements AuthService {
 
             // If 2FA is enabled, prompt to verify
             if (user.isTwoFactorEnabled()) {
-                return ResponseEntity.status(202).body("2FA enabled. Please verify with /api/auth/verify-2fa");
+                // Step 1: Create a temporary session with 2FA flag set to false
+                String preAuthToken = UUID.randomUUID().toString();
+
+                Session preSession = Session.builder()
+                        .userId(user.getId())
+                        .token(preAuthToken)
+                        .expiresAt(LocalDateTime.now().plusMinutes(5)) // shorter expiry
+                        .isVerified(false) // new field you’ll add
+                        .build();
+                sessionRepo.save(preSession);
+
+                // Step 2: Return 202 + token
+                return ResponseEntity.status(202).body(
+                        Map.of(
+                                "message", "2FA enabled. Please verify using /api/auth/verify-2fa",
+                                "token", preAuthToken
+                        )
+                );
             }
 
             // Create session token valid for 15 minutes
@@ -214,7 +232,11 @@ public class AuthServiceImpl implements AuthService {
     public ResponseEntity<?> verifyTwoFactor(String token, int code) {
         try {
             Session session = sessionRepo.findByToken(token)
-                    .orElseThrow(() -> new RuntimeException("Invalid session"));
+                    .orElseThrow(() -> new RuntimeException("Invalid session token"));
+
+            if (Boolean.TRUE.equals(session.getIsVerified())) {
+                return ResponseEntity.badRequest().body("Session already verified.");
+            }
 
             User user = userRepo.findById(session.getUserId())
                     .orElseThrow(() -> new RuntimeException("User not found"));
@@ -228,16 +250,16 @@ public class AuthServiceImpl implements AuthService {
                 return ResponseEntity.badRequest().body("Invalid 2FA code");
             }
 
-            // Create a new session token
-            String newToken = UUID.randomUUID().toString();
-            Session newSession = Session.builder()
-                    .userId(user.getId())
-                    .token(newToken)
-                    .expiresAt(LocalDateTime.now().plusMinutes(15))
-                    .build();
-            sessionRepo.save(newSession);
+            session.setIsVerified(true);
+            session.setExpiresAt(LocalDateTime.now().plusMinutes(30));
+            sessionRepo.save(session);
 
-            return ResponseEntity.ok(newToken); // Send session token
+            return ResponseEntity.ok(
+                    Map.of(
+                            "message", "2FA verified successfully",
+                            "token", session.getToken()
+                    )
+            );
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("2FA verification failed: " + e.getMessage());
         }
